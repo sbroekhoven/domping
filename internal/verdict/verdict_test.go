@@ -49,7 +49,7 @@ func TestDecide(t *testing.T) {
 		{"both unknown", unknown, dnscheck.Error, Unknown, []string{"rdap:", "dns:"}},
 		{"no rdap service with records", noRDAP, dnscheck.Records, Active, []string{"DNS only"}},
 		{"no rdap service nodata", noRDAP, dnscheck.NoData, Unknown, []string{"NODATA"}},
-		{"no rdap service nxdomain", noRDAP, dnscheck.NXDomain, Unknown, []string{"NXDOMAIN"}},
+		{"no rdap service nxdomain", noRDAP, dnscheck.NXDomain, Unregistered, []string{"DNS NXDOMAIN only"}},
 		{"no rdap service dns error", noRDAP, dnscheck.Error, Unknown, []string{"dns:"}},
 	}
 	for _, tt := range tests {

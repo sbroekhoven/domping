@@ -67,12 +67,18 @@ func Decide(r rdap.Result, d dnscheck.Result) (Verdict, []string) {
 			v = Unknown
 		}
 	case rdap.NoService:
-		// Without RDAP the registration can't be confirmed or denied, so
-		// only positive DNS evidence counts; never report it as inactive.
-		if d.Outcome == dnscheck.Records {
+		// Without RDAP the verdict rests on DNS alone. NXDOMAIN (confirmed
+		// by the secondary resolver when configured) means nothing answers
+		// for the domain, whether it is unregistered or registered without
+		// nameservers; NODATA and errors stay inconclusive.
+		switch d.Outcome {
+		case dnscheck.Records:
 			v = Active
 			notes = append(notes, "no RDAP for this TLD, verdict based on DNS only")
-		} else {
+		case dnscheck.NXDomain:
+			v = Unregistered
+			notes = append(notes, "no RDAP for this TLD, verdict based on DNS NXDOMAIN only (may be registered without nameservers)")
+		default:
 			v = Unknown
 			notes = append(notes, "no RDAP for this TLD and DNS "+d.Short())
 		}

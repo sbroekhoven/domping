@@ -94,9 +94,10 @@ cannot portably query a specific resolver.
 | `ACTIVE` | no-rdap (TLD has no RDAP service) | NS, A or AAAA found | no |
 | `REGISTERED_NO_DNS` | registered | NODATA or NXDOMAIN, **or** status `clientHold`/`serverHold` | **yes** |
 | `UNREGISTERED` | 404 | NXDOMAIN | **yes** |
+| `UNREGISTERED` | no-rdap (TLD has no RDAP service) | NXDOMAIN | **yes** (may also be registered without nameservers; see notes) |
 | `INCONSISTENT` | 404 | records or NODATA | no (review manually) |
 | `UNKNOWN` | error/timeout | anything, or any RDAP + DNS error | no |
-| `UNKNOWN` | no-rdap | NODATA, NXDOMAIN or error | no |
+| `UNKNOWN` | no-rdap | NODATA or error | no |
 
 Statuses such as `pendingDelete`, `redemptionPeriod`, `pendingRestore`,
 `clientHold`, `serverHold` and `inactive` are always listed in the notes.
