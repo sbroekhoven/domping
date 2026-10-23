@@ -21,6 +21,7 @@ func TestDecide(t *testing.T) {
 	}
 	notFound := rdap.Result{State: rdap.NotRegistered, HTTPStatus: 404}
 	unknown := rdap.Result{State: rdap.Unknown, HTTPStatus: 503, Err: "HTTP 503"}
+	rateLimited := rdap.Result{State: rdap.Unknown, HTTPStatus: 429, Err: "HTTP 429"}
 	noRDAP := rdap.Result{State: rdap.NoService, HTTPStatus: 404, Err: "no RDAP service available for this TLD"}
 
 	tests := []struct {
@@ -47,6 +48,10 @@ func TestDecide(t *testing.T) {
 		{"rdap unknown records", unknown, dnscheck.Records, Unknown, []string{"rdap: HTTP 503"}},
 		{"rdap unknown nxdomain", unknown, dnscheck.NXDomain, Unknown, nil},
 		{"both unknown", unknown, dnscheck.Error, Unknown, []string{"rdap:", "dns:"}},
+		{"rate limited with records", rateLimited, dnscheck.Records, Active, []string{"HTTP 429"}},
+		{"rate limited nodata", rateLimited, dnscheck.NoData, Unknown, []string{"rdap: HTTP 429"}},
+		{"rate limited nxdomain", rateLimited, dnscheck.NXDomain, Unknown, []string{"rdap: HTTP 429"}},
+		{"rate limited dns error", rateLimited, dnscheck.Error, Unknown, []string{"rdap: HTTP 429", "dns:"}},
 		{"no rdap service with records", noRDAP, dnscheck.Records, Active, []string{"DNS only"}},
 		{"no rdap service nodata", noRDAP, dnscheck.NoData, Unknown, []string{"NODATA"}},
 		{"no rdap service nxdomain", noRDAP, dnscheck.NXDomain, Unregistered, []string{"DNS NXDOMAIN only"}},

@@ -3,6 +3,7 @@ package verdict
 
 import (
 	"fmt"
+	"net/http"
 	"strings"
 
 	"github.com/sbroekhoven/domping/internal/dnscheck"
@@ -87,9 +88,15 @@ func Decide(r rdap.Result, d dnscheck.Result) (Verdict, []string) {
 		}
 	default:
 		v = Unknown
+		// A 429 only means the registry is rate-limiting us; resolving DNS
+		// is enough evidence that the domain is alive.
+		if r.HTTPStatus == http.StatusTooManyRequests && d.Outcome == dnscheck.Records {
+			v = Active
+			notes = append(notes, "RDAP rate-limited (HTTP 429), verdict based on DNS only")
+		}
 	}
 
-	if r.State == rdap.Unknown && r.Err != "" {
+	if r.State == rdap.Unknown && r.Err != "" && v != Active {
 		notes = append(notes, "rdap: "+r.Err)
 	}
 	if d.Outcome == dnscheck.Error {

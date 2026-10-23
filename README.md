@@ -95,6 +95,7 @@ cannot portably query a specific resolver.
 |---------|------|-----|-----------|
 | `ACTIVE` | registered | NS, A or AAAA found | no |
 | `ACTIVE` | no-rdap (TLD has no RDAP service) | NS, A or AAAA found | no |
+| `ACTIVE` | rate-limited (HTTP 429 after all retries) | NS, A or AAAA found | no |
 | `REGISTERED_NO_DNS` | registered | NODATA or NXDOMAIN, **or** status `clientHold`/`serverHold` | **yes** |
 | `UNREGISTERED` | 404 | NXDOMAIN | **yes** |
 | `UNREGISTERED` | no-rdap (TLD has no RDAP service) | NXDOMAIN | **yes** (may also be registered without nameservers; see notes) |
