@@ -66,6 +66,16 @@ func Decide(r rdap.Result, d dnscheck.Result) (Verdict, []string) {
 		default:
 			v = Unknown
 		}
+	case rdap.NoService:
+		// Without RDAP the registration can't be confirmed or denied, so
+		// only positive DNS evidence counts; never report it as inactive.
+		if d.Outcome == dnscheck.Records {
+			v = Active
+			notes = append(notes, "no RDAP for this TLD, verdict based on DNS only")
+		} else {
+			v = Unknown
+			notes = append(notes, "no RDAP for this TLD and DNS "+d.Short())
+		}
 	default:
 		v = Unknown
 	}

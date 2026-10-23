@@ -163,9 +163,6 @@ func (w *Writer) columns(cols ...string) string {
 }
 
 func rdapShort(r rdap.Result) string {
-	if r.State == rdap.Unknown && r.HTTPStatus == 404 {
-		return "no-rdap" // 404 from the fallback: no RDAP service for this TLD
-	}
 	if r.State == rdap.Unknown && r.HTTPStatus != 0 && r.HTTPStatus != 200 {
 		return fmt.Sprintf("unknown(%d)", r.HTTPStatus)
 	}

@@ -70,7 +70,7 @@ there go to `https://rdap.org/domain/<domain>`.
 - `200` → registered; status values and the expiration date are parsed.
 - `404` → not registered. Exception: when rdap.org itself answers 404 without
   redirecting, the TLD has no RDAP service at all (e.g. `.de`) and the result
-  is *unknown*, not *not registered*.
+  is *no-rdap*, not *not registered*.
 - `429`, `5xx`, timeouts → retried with exponential backoff (honoring
   `Retry-After`, max 3 attempts), then *unknown*.
 - Requests are rate-limited per RDAP host; a 429 slows down all workers for
@@ -91,10 +91,12 @@ cannot portably query a specific resolver.
 | Verdict | RDAP | DNS | Inactive? |
 |---------|------|-----|-----------|
 | `ACTIVE` | registered | NS, A or AAAA found | no |
+| `ACTIVE` | no-rdap (TLD has no RDAP service) | NS, A or AAAA found | no |
 | `REGISTERED_NO_DNS` | registered | NODATA or NXDOMAIN, **or** status `clientHold`/`serverHold` | **yes** |
 | `UNREGISTERED` | 404 | NXDOMAIN | **yes** |
 | `INCONSISTENT` | 404 | records or NODATA | no (review manually) |
-| `UNKNOWN` | error/timeout/no RDAP | anything, or any RDAP + DNS error | no |
+| `UNKNOWN` | error/timeout | anything, or any RDAP + DNS error | no |
+| `UNKNOWN` | no-rdap | NODATA, NXDOMAIN or error | no |
 
 Statuses such as `pendingDelete`, `redemptionPeriod`, `pendingRestore`,
 `clientHold`, `serverHold` and `inactive` are always listed in the notes.
@@ -107,9 +109,9 @@ the line so you can review them.
 DOMAIN                  VERDICT            RDAP            DNS        EXPIRES     NOTES
 example.com             ACTIVE             registered      NS,A,AAAA  2027-08-13
 blogspot.com            ACTIVE             registered      NS,A,AAAA  2027-07-31  input: foo.blogspot.com
-xn--bcher-kva.de        UNKNOWN            no-rdap         NS,A,AAAA  -           input: bücher.de; rdap: no RDAP service available for this TLD
+xn--bcher-kva.de        ACTIVE             no-rdap         NS,A,AAAA  -           input: bücher.de; no RDAP for this TLD, verdict based on DNS only
 not-a-real-domain.com   UNREGISTERED       not-registered  NXDOMAIN   -
-checked 4/4: 2 active, 0 registered_no_dns, 1 unregistered, 0 inconsistent, 1 unknown
+checked 4/4: 3 active, 0 registered_no_dns, 1 unregistered, 0 inconsistent, 0 unknown
 ```
 
 Results are printed in input order as soon as they are available. The final

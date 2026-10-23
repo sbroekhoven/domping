@@ -178,7 +178,7 @@ func TestLookupFallback(t *testing.T) {
 			handler: func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusNotFound)
 			},
-			wantState: Unknown,
+			wantState: NoService,
 			wantPath:  "/fallback/example.other",
 		},
 	}

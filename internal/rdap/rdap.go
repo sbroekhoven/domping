@@ -24,6 +24,9 @@ const (
 	Unknown State = iota
 	Registered
 	NotRegistered
+	// NoService means the TLD has no RDAP service at all (e.g. .de), as
+	// opposed to Unknown, where a lookup was possible but failed.
+	NoService
 )
 
 func (s State) String() string {
@@ -32,6 +35,8 @@ func (s State) String() string {
 		return "registered"
 	case NotRegistered:
 		return "not-registered"
+	case NoService:
+		return "no-rdap"
 	default:
 		return "unknown"
 	}
@@ -218,7 +223,7 @@ func (c *Client) attempt(ctx context.Context, u string, res *Result, fromBootstr
 		// rdap.org answers 404 itself (without redirecting) when no RDAP
 		// service exists for the TLD; that says nothing about registration.
 		if !fromBootstrap && sameHost(resp.Request.URL.String(), c.opts.FallbackURL) {
-			res.State, res.Err = Unknown, "no RDAP service available for this TLD"
+			res.State, res.Err = NoService, "no RDAP service available for this TLD"
 			return false, 0
 		}
 		res.State, res.Err = NotRegistered, ""

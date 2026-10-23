@@ -21,6 +21,7 @@ func TestDecide(t *testing.T) {
 	}
 	notFound := rdap.Result{State: rdap.NotRegistered, HTTPStatus: 404}
 	unknown := rdap.Result{State: rdap.Unknown, HTTPStatus: 503, Err: "HTTP 503"}
+	noRDAP := rdap.Result{State: rdap.NoService, HTTPStatus: 404, Err: "no RDAP service available for this TLD"}
 
 	tests := []struct {
 		name      string
@@ -46,6 +47,10 @@ func TestDecide(t *testing.T) {
 		{"rdap unknown records", unknown, dnscheck.Records, Unknown, []string{"rdap: HTTP 503"}},
 		{"rdap unknown nxdomain", unknown, dnscheck.NXDomain, Unknown, nil},
 		{"both unknown", unknown, dnscheck.Error, Unknown, []string{"rdap:", "dns:"}},
+		{"no rdap service with records", noRDAP, dnscheck.Records, Active, []string{"DNS only"}},
+		{"no rdap service nodata", noRDAP, dnscheck.NoData, Unknown, []string{"NODATA"}},
+		{"no rdap service nxdomain", noRDAP, dnscheck.NXDomain, Unknown, []string{"NXDOMAIN"}},
+		{"no rdap service dns error", noRDAP, dnscheck.Error, Unknown, []string{"dns:"}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
