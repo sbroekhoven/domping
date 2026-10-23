@@ -18,12 +18,15 @@ const (
 	Unregistered    Verdict = "UNREGISTERED"
 	Inconsistent    Verdict = "INCONSISTENT"
 	Unknown         Verdict = "UNKNOWN"
+	// PublicSuffix is input that is itself a public suffix (e.g. co.uk) and
+	// therefore not a registrable domain. It is not looked up.
+	PublicSuffix Verdict = "PUBLIC_SUFFIX"
 )
 
 // Inactive reports whether v counts as inactive. UNKNOWN and INCONSISTENT
 // are never inactive.
 func (v Verdict) Inactive() bool {
-	return v == Unregistered || v == RegisteredNoDNS
+	return v == Unregistered || v == RegisteredNoDNS || v == PublicSuffix
 }
 
 // holdStatuses take a domain out of the zone even if resolvers still

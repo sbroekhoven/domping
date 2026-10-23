@@ -29,6 +29,7 @@ func records() []Record {
 		rec("parked.com", verdict.RegisteredNoDNS, rdap.Registered, dnscheck.NoData),
 		rec("odd.com", verdict.Inconsistent, rdap.NotRegistered, dnscheck.NoData),
 		rec("flaky.com", verdict.Unknown, rdap.Unknown, dnscheck.Error),
+		{Domain: "co.uk", Verdict: verdict.PublicSuffix, Inactive: true, Notes: []string{"public suffix, not a registrable domain"}},
 	}
 }
 
@@ -44,6 +45,13 @@ func render(t *testing.T, opts Options) (stdout, stderr, file string) {
 		if err := w.Write(r); err != nil {
 			t.Fatal(err)
 		}
+	}
+	want := 6
+	if opts.InactiveOnly {
+		want = 3
+	}
+	if w.FileRecords != want {
+		t.Errorf("FileRecords = %d, want %d", w.FileRecords, want)
 	}
 	return so.String(), se.String(), f.String()
 }
@@ -76,6 +84,9 @@ func TestTableOutput(t *testing.T) {
 	if !strings.Contains(stdout, "    rdap: state=not-registered") || !strings.Contains(stdout, "    dns:  1.1.1.1:53") {
 		t.Errorf("INCONSISTENT raw details missing:\n%s", stdout)
 	}
+	if !strings.Contains(stdout, "co.uk       PUBLIC_SUFFIX      -               -          -           public suffix") {
+		t.Errorf("public suffix line wrong:\n%s", stdout)
+	}
 	if strings.Contains(stdout, "\x1b[") {
 		t.Error("color codes without Color option")
 	}
@@ -93,7 +104,7 @@ func TestColorOnlyOnConsole(t *testing.T) {
 
 func TestInactiveOnly(t *testing.T) {
 	stdout, stderr, file := render(t, Options{InactiveOnly: true})
-	if file != "gone.com\nparked.com\n" {
+	if file != "gone.com\nparked.com\nco.uk\n" {
 		t.Errorf("file = %q, want bare inactive domains", file)
 	}
 	if strings.Contains(stdout, "active.com") || strings.Contains(stdout, "flaky.com") || strings.Contains(stdout, "odd.com") {
@@ -116,8 +127,11 @@ func TestJSON(t *testing.T) {
 		t.Error("JSON file differs from console")
 	}
 	lines := strings.Split(strings.TrimSpace(stdout), "\n")
-	if len(lines) != 5 {
-		t.Fatalf("got %d lines, want 5", len(lines))
+	if len(lines) != 6 {
+		t.Fatalf("got %d lines, want 6", len(lines))
+	}
+	if strings.Contains(lines[5], `"rdap"`) || strings.Contains(lines[5], `"dns"`) {
+		t.Errorf("public suffix JSON should omit rdap/dns: %s", lines[5])
 	}
 	var r map[string]any
 	if err := json.Unmarshal([]byte(lines[0]), &r); err != nil {
@@ -133,10 +147,10 @@ func TestJSON(t *testing.T) {
 
 func TestJSONInactiveOnly(t *testing.T) {
 	stdout, _, file := render(t, Options{JSON: true, InactiveOnly: true})
-	if file != "gone.com\nparked.com\n" {
+	if file != "gone.com\nparked.com\nco.uk\n" {
 		t.Errorf("file = %q, want bare domains", file)
 	}
-	if n := strings.Count(stdout, "\n"); n != 2 {
-		t.Errorf("stdout has %d JSON lines, want 2", n)
+	if n := strings.Count(stdout, "\n"); n != 3 {
+		t.Errorf("stdout has %d JSON lines, want 3", n)
 	}
 }

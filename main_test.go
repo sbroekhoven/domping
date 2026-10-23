@@ -29,7 +29,7 @@ func TestRunUsageErrors(t *testing.T) {
 	}{
 		{"no input", nil, "no domain given"},
 		{"invalid domain", []string{"http://example.com"}, "not a domain name"},
-		{"public suffix", []string{"co.uk"}, "public suffix"},
+		{"bare TLD", []string{"com"}, "not a registrable domain"},
 		{"invalid line in file", []string{"-file", bad}, "line 2"},
 		{"empty file", []string{"-file", empty}, "no domains to check"},
 		{"missing file", []string{"-file", filepath.Join(dir, "nope.txt")}, "no such file"},
@@ -84,5 +84,25 @@ func TestParseArgsPrecedence(t *testing.T) {
 	}
 	if c.Timeout != 3*time.Second {
 		t.Errorf("timeout = %s, want 3s from config", c.Timeout)
+	}
+}
+
+func TestOutSummary(t *testing.T) {
+	abs, _ := filepath.Abs("dead.txt")
+	tests := []struct {
+		name string
+		o    options
+		n    int
+		want string
+	}{
+		{"table", options{out: "dead.txt"}, 3, "wrote 3 results to " + abs + " (table)"},
+		{"json single", options{out: "dead.txt", json: true}, 1, "wrote 1 result to " + abs + " (JSON lines)"},
+		{"inactive", options{out: "dead.txt", inactiveOnly: true}, 2, "wrote 2 inactive domains to " + abs + " (domain names only, usable with -file)"},
+		{"inactive none", options{out: "dead.txt", inactiveOnly: true}, 0, "wrote 0 inactive domains to " + abs + " (none found, file is empty)"},
+	}
+	for _, tt := range tests {
+		if got := outSummary(&tt.o, tt.n); got != tt.want {
+			t.Errorf("%s: got %q, want %q", tt.name, got, tt.want)
+		}
 	}
 }

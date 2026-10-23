@@ -11,6 +11,7 @@ func TestNormalize(t *testing.T) {
 		in      string
 		want    string
 		reduced bool
+		suffix  bool
 		wantErr bool
 	}{
 		{in: "example.com", want: "example.com"},
@@ -25,12 +26,15 @@ func TestNormalize(t *testing.T) {
 		{in: "例え.jp", want: "xn--r8jz45g.jp", reduced: true},
 		{in: "example.unknowntld", want: "example.unknowntld"},
 		{in: "my-site.nl", want: "my-site.nl"},
+		{in: "co.uk", want: "co.uk", suffix: true},
+		{in: "Sandwell.sch.uk.", want: "sandwell.sch.uk", suffix: true},
+		{in: "forli-cesena.it", want: "forli-cesena.it", suffix: true},
+		{in: "x.se", want: "x.se", suffix: true},
 
 		{in: "", wantErr: true},
 		{in: "   ", wantErr: true},
 		{in: "localhost", wantErr: true},
 		{in: "com", wantErr: true},
-		{in: "co.uk", wantErr: true},
 		{in: "http://example.com", wantErr: true},
 		{in: "example.com/path", wantErr: true},
 		{in: "user@example.com", wantErr: true},
@@ -56,6 +60,9 @@ func TestNormalize(t *testing.T) {
 			}
 			if got.Name != tt.want {
 				t.Errorf("Normalize(%q) = %q, want %q", tt.in, got.Name, tt.want)
+			}
+			if got.PublicSuffix != tt.suffix {
+				t.Errorf("Normalize(%q).PublicSuffix = %v, want %v", tt.in, got.PublicSuffix, tt.suffix)
 			}
 			if got.Reduced() != tt.reduced {
 				t.Errorf("Normalize(%q).Reduced() = %v, want %v", tt.in, got.Reduced(), tt.reduced)
@@ -83,9 +90,14 @@ func TestParse(t *testing.T) {
 		},
 		{
 			name:     "reports invalid lines with line numbers",
-			input:    "example.com\nnot a domain\nco.uk\nexample.net\n",
+			input:    "example.com\nnot a domain\nhttp://x.com\nexample.net\n",
 			want:     []string{"example.com", "example.net"},
 			errLines: []int{2, 3},
+		},
+		{
+			name:  "public suffixes are kept",
+			input: "example.com\nco.uk\ncardiff.sch.uk\n",
+			want:  []string{"example.com", "co.uk", "cardiff.sch.uk"},
 		},
 		{
 			name:  "windows line endings",

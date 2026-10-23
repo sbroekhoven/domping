@@ -19,6 +19,10 @@ type Domain struct {
 	Name string
 	// Input is the cleaned original input (trimmed, lowercased, no trailing dot).
 	Input string
+	// PublicSuffix is set when the input is itself a public suffix (e.g.
+	// co.uk, sandwell.sch.uk). Such names can't be registered; Name is then
+	// the suffix itself.
+	PublicSuffix bool
 }
 
 // Reduced reports whether Name differs from what the user typed, for example
@@ -38,9 +42,14 @@ func (e *LineError) Error() string {
 
 func (e *LineError) Unwrap() error { return e.Err }
 
+// errPublicSuffix is returned by registrable for names that are themselves
+// public suffixes.
+var errPublicSuffix = errors.New("is a public suffix, not a registrable domain")
+
 // Normalize converts raw user input into a registrable ASCII domain name.
 // Subdomains are reduced to the registrable domain (eTLD+1, using ICANN
-// suffixes only, so e.g. foo.blogspot.com becomes blogspot.com).
+// suffixes only, so e.g. foo.blogspot.com becomes blogspot.com). Public
+// suffixes are not an error: they are returned with PublicSuffix set.
 func Normalize(raw string) (Domain, error) {
 	s := strings.ToLower(strings.TrimSpace(raw))
 	s = strings.TrimRight(s, ".")
@@ -60,6 +69,9 @@ func Normalize(raw string) (Domain, error) {
 	}
 
 	name, err := registrable(ascii)
+	if errors.Is(err, errPublicSuffix) {
+		return Domain{Name: ascii, Input: s, PublicSuffix: true}, nil
+	}
 	if err != nil {
 		return Domain{}, err
 	}
@@ -108,7 +120,7 @@ func registrable(name string) (string, error) {
 		}
 	}
 	if len(labels) <= suffixLen {
-		return "", errors.New("is a public suffix, not a registrable domain")
+		return "", errPublicSuffix
 	}
 	return strings.Join(labels[len(labels)-suffixLen-1:], "."), nil
 }

@@ -90,6 +90,7 @@ func TestInactive(t *testing.T) {
 		Unregistered:    true,
 		Inconsistent:    false,
 		Unknown:         false,
+		PublicSuffix:    true,
 	}
 	for v, want := range tests {
 		if got := v.Inactive(); got != want {

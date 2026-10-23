@@ -23,8 +23,8 @@ type Record struct {
 	Inactive bool            `json:"inactive"`
 	Expiry   *time.Time      `json:"expiry,omitempty"`
 	Notes    []string        `json:"notes,omitempty"`
-	RDAP     rdap.Result     `json:"rdap"`
-	DNS      dnscheck.Result `json:"dns"`
+	RDAP     rdap.Result     `json:"rdap,omitzero"` // omitted when not looked up (PUBLIC_SUFFIX)
+	DNS      dnscheck.Result `json:"dns,omitzero"`
 }
 
 // Options control rendering.
@@ -40,6 +40,9 @@ type Writer struct {
 	Stdout, Stderr io.Writer
 	File           io.Writer // nil if no -out
 	Opts           Options
+
+	// FileRecords counts the domains written to File.
+	FileRecords int
 }
 
 const (
@@ -74,6 +77,7 @@ func (w *Writer) Write(r Record) error {
 				return err
 			}
 			if w.File != nil {
+				w.FileRecords++
 				_, err := fmt.Fprintln(w.File, r.Domain)
 				return err
 			}
@@ -89,6 +93,7 @@ func (w *Writer) Write(r Record) error {
 	if w.File == nil {
 		return nil
 	}
+	w.FileRecords++
 	if w.Opts.JSON {
 		return writeJSON(w.File, r)
 	}
@@ -127,11 +132,15 @@ func (w *Writer) text(r Record, color bool) string {
 	if color {
 		v = colorize(v, verdictColor(r.Verdict))
 	}
+	rd, dn := rdapShort(r.RDAP), r.DNS.Short()
+	if r.Verdict == verdict.PublicSuffix {
+		rd, dn = "-", "-"
+	}
 	line := strings.Join([]string{
 		pad(r.Domain, w.Opts.DomainWidth),
 		v,
-		pad(rdapShort(r.RDAP), rdapWidth),
-		pad(r.DNS.Short(), dnsWidth),
+		pad(rd, rdapWidth),
+		pad(dn, dnsWidth),
 		pad(exp, expiryWidth),
 		strings.Join(r.Notes, "; "),
 	}, "  ")
@@ -201,7 +210,7 @@ func verdictColor(v verdict.Verdict) string {
 		return ansiGreen
 	case verdict.RegisteredNoDNS:
 		return ansiYellow
-	case verdict.Unregistered:
+	case verdict.Unregistered, verdict.PublicSuffix:
 		return ansiRed
 	case verdict.Inconsistent:
 		return ansiMagenta

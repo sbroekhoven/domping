@@ -10,6 +10,7 @@ import (
 	"io"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"sync"
 	"syscall"
 	"time"
@@ -233,9 +234,12 @@ func run(args []string, stdout, stderr io.Writer) int {
 		total += n
 	}
 	if len(domains) > 1 || ctx.Err() != nil {
-		fmt.Fprintf(stderr, "checked %d/%d: %d active, %d registered_no_dns, %d unregistered, %d inconsistent, %d unknown\n",
+		fmt.Fprintf(stderr, "checked %d/%d: %d active, %d registered_no_dns, %d unregistered, %d public_suffix, %d inconsistent, %d unknown\n",
 			total, len(domains), counts[verdict.Active], counts[verdict.RegisteredNoDNS],
-			counts[verdict.Unregistered], counts[verdict.Inconsistent], counts[verdict.Unknown])
+			counts[verdict.Unregistered], counts[verdict.PublicSuffix], counts[verdict.Inconsistent], counts[verdict.Unknown])
+	}
+	if outFile != nil && writeErr == nil {
+		fmt.Fprintln(stderr, outSummary(o, w.FileRecords))
 	}
 
 	switch {
@@ -244,13 +248,38 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return exitInterrupted
 	case writeErr != nil:
 		return exitUsage
-	case counts[verdict.Unregistered]+counts[verdict.RegisteredNoDNS] > 0:
+	case counts[verdict.Unregistered]+counts[verdict.RegisteredNoDNS]+counts[verdict.PublicSuffix] > 0:
 		return exitInactive
 	case counts[verdict.Unknown]+counts[verdict.Inconsistent] > 0:
 		return exitInconclusive
 	default:
 		return exitActive
 	}
+}
+
+// outSummary tells where the -out file is and what was stored in it.
+func outSummary(o *options, n int) string {
+	path, err := filepath.Abs(o.out)
+	if err != nil {
+		path = o.out
+	}
+	switch {
+	case o.inactiveOnly && n == 0:
+		return fmt.Sprintf("wrote 0 inactive domains to %s (none found, file is empty)", path)
+	case o.inactiveOnly:
+		return fmt.Sprintf("wrote %d inactive %s to %s (domain names only, usable with -file)", n, plural(n, "domain"), path)
+	case o.json:
+		return fmt.Sprintf("wrote %d %s to %s (JSON lines)", n, plural(n, "result"), path)
+	default:
+		return fmt.Sprintf("wrote %d %s to %s (table)", n, plural(n, "result"), path)
+	}
+}
+
+func plural(n int, word string) string {
+	if n == 1 {
+		return word
+	}
+	return word + "s"
 }
 
 func loadDomains(o *options) ([]input.Domain, []error) {
@@ -291,6 +320,14 @@ type checker struct {
 }
 
 func (c *checker) check(ctx context.Context, d input.Domain) output.Record {
+	if d.PublicSuffix {
+		return output.Record{
+			Domain:   d.Name,
+			Verdict:  verdict.PublicSuffix,
+			Inactive: true,
+			Notes:    []string{"public suffix, not a registrable domain"},
+		}
+	}
 	var (
 		rr rdap.Result
 		dr dnscheck.Result

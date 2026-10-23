@@ -47,8 +47,11 @@ Flags may appear before or after domain arguments.
 - Subdomains are reduced to the registrable domain using the ICANN section of
   the Public Suffix List (`www.example.co.uk` → `example.co.uk`). The original
   input is shown in the notes.
-- Invalid input (URLs, public suffixes such as `co.uk`, bad characters) is
-  rejected with the line number; nothing is checked and the exit code is 2.
+- Entries that are themselves public suffixes (`co.uk`, `forli-cesena.it`,
+  `sandwell.sch.uk`) are not looked up and get the inactive verdict
+  `PUBLIC_SUFFIX`.
+- Invalid input (URLs, bad characters, a bare TLD) is rejected with the line
+  number; nothing is checked and the exit code is 2.
 
 ### Configuration
 
@@ -95,6 +98,7 @@ cannot portably query a specific resolver.
 | `REGISTERED_NO_DNS` | registered | NODATA or NXDOMAIN, **or** status `clientHold`/`serverHold` | **yes** |
 | `UNREGISTERED` | 404 | NXDOMAIN | **yes** |
 | `UNREGISTERED` | no-rdap (TLD has no RDAP service) | NXDOMAIN | **yes** (may also be registered without nameservers; see notes) |
+| `PUBLIC_SUFFIX` | not checked | not checked | **yes** (e.g. `co.uk`, `sandwell.sch.uk`: not a registrable domain) |
 | `INCONSISTENT` | 404 | records or NODATA | no (review manually) |
 | `UNKNOWN` | error/timeout | anything, or any RDAP + DNS error | no |
 | `UNKNOWN` | no-rdap | NODATA or error | no |
@@ -112,15 +116,21 @@ example.com             ACTIVE             registered      NS,A,AAAA  2027-08-13
 blogspot.com            ACTIVE             registered      NS,A,AAAA  2027-07-31  input: foo.blogspot.com
 xn--bcher-kva.de        ACTIVE             no-rdap         NS,A,AAAA  -           input: bücher.de; no RDAP for this TLD, verdict based on DNS only
 not-a-real-domain.com   UNREGISTERED       not-registered  NXDOMAIN   -
-checked 4/4: 3 active, 0 registered_no_dns, 1 unregistered, 0 inconsistent, 0 unknown
+checked 4/4: 3 active, 0 registered_no_dns, 1 unregistered, 0 public_suffix, 0 inconsistent, 0 unknown
 ```
 
 Results are printed in input order as soon as they are available. The final
-summary line goes to stderr.
+summary line goes to stderr. With `-out`, a last stderr line shows the
+absolute path of the file and what was stored in it, e.g.
+
+```
+wrote 2 inactive domains to /home/me/lists/dead.txt (domain names only, usable with -file)
+wrote 0 inactive domains to /home/me/lists/dead.txt (none found, file is empty)
+```
 
 - `-out file` without `-inactive-only`: the file contains the same lines as
   the console (or the same JSON lines with `-json`), without color codes.
-- `-inactive-only`: only `UNREGISTERED` and `REGISTERED_NO_DNS` domains are
+- `-inactive-only`: only `UNREGISTERED`, `REGISTERED_NO_DNS` and `PUBLIC_SUFFIX` domains are
   reported on stdout, and the `-out` file contains **just the domain names**,
   one per line, so it can be fed back with `-file`. `UNKNOWN` and
   `INCONSISTENT` domains are written to stderr as warnings so they are not
