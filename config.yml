@@ -1,0 +1,25 @@
+# domping configuration (example with the built-in defaults).
+#
+# domping reads ~/.config/domping/config.yml ($XDG_CONFIG_HOME/domping/config.yml)
+# automatically if it exists, or the file given with -config.
+# Precedence: command-line flags > config file > built-in defaults.
+
+# Primary DNS resolver (host or host:port, IPv6 allowed).
+resolver: 1.1.1.1:53
+
+# Secondary resolver, consulted when the primary answers NXDOMAIN or fails
+# (SERVFAIL/timeout), to avoid false negatives. Set to "" to disable.
+resolver2: 8.8.8.8:53
+
+# Number of domains checked in parallel.
+concurrency: 10
+
+# Timeout per RDAP HTTP request and per DNS query.
+timeout: 10s
+
+# Minimum spacing between requests to the same RDAP server.
+rdap_interval: 200ms
+
+# IANA RDAP bootstrap registry and the fallback used for TLDs not listed in it.
+rdap_bootstrap: https://data.iana.org/rdap/dns.json
+rdap_fallback: https://rdap.org/domain/
