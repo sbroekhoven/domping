@@ -302,3 +302,69 @@ func TestEPPStatus(t *testing.T) {
 		}
 	}
 }
+
+const detailedBody = `{
+  "objectClassName": "domain",
+  "ldhName": "example.test",
+  "status": ["active"],
+  "events": [
+    {"eventAction": "registration", "eventDate": "2001-02-03T04:05:06Z"},
+    {"eventAction": "last changed", "eventDate": "2026-10-01T12:00:00Z"},
+    {"eventAction": "expiration", "eventDate": "2027-02-03T04:05:06Z"},
+    {"eventAction": "last update of RDAP database", "eventDate": "2026-11-23T10:00:00Z"}
+  ],
+  "nameservers": [
+    {"objectClassName": "nameserver", "ldhName": "NS2.Example.NET."},
+    {"objectClassName": "nameserver", "ldhName": "ns1.example.net"},
+    {"objectClassName": "nameserver", "ldhName": "ns1.example.net"}
+  ],
+  "entities": [
+    {"objectClassName": "entity", "roles": ["registrant"], "vcardArray": ["vcard", [["fn", {}, "text", "Not The Registrar"]]]},
+    {"objectClassName": "entity", "roles": ["registrar"], "handle": "292",
+     "publicIds": [{"type": "IANA Registrar ID", "identifier": "292"}],
+     "vcardArray": ["vcard", [["version", {}, "text", "4.0"], ["fn", {}, "text", "MarkMonitor Inc."]]],
+     "entities": [{"objectClassName": "entity", "roles": ["abuse"]}]}
+  ]
+}`
+
+func TestLookupParsesRegistrationDetails(t *testing.T) {
+	tests := []struct {
+		name          string
+		body          string
+		wantRegistrar string
+		wantIANA      string
+		wantNS        string
+		wantReg       string
+		wantChanged   string
+	}{
+		{"full", detailedBody, "MarkMonitor Inc.", "292", "ns1.example.net,ns2.example.net", "2001-02-03", "2026-10-01"},
+		{"minimal", registeredBody, "", "", "", "2001-01-01", ""},
+		{"registrar without vcard uses handle", `{"objectClassName":"domain","entities":[{"roles":["registrar"],"handle":"R-9"}]}`, "R-9", "", "", "", ""},
+		{"nested registrar", `{"objectClassName":"domain","entities":[{"roles":["registrant"],"entities":[{"roles":["registrar"],"vcardArray":["vcard",[["fn",{},"text","Nested Ltd"]]]}]}]}`, "Nested Ltd", "", "", "", ""},
+		{"broken vcard", `{"objectClassName":"domain","entities":[{"roles":["registrar"],"handle":"H","vcardArray":"nonsense"}]}`, "H", "", "", "", ""},
+	}
+	day := func(p *time.Time) string {
+		if p == nil {
+			return ""
+		}
+		return p.Format("2006-01-02")
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c, _ := newTestEnv(t, func(w http.ResponseWriter, r *http.Request) { fmt.Fprint(w, tt.body) })
+			res := c.Lookup(context.Background(), "example.test")
+			if res.State != Registered {
+				t.Fatalf("state = %v (%s)", res.State, res.Err)
+			}
+			if res.Registrar != tt.wantRegistrar || res.RegistrarIANAID != tt.wantIANA {
+				t.Errorf("registrar = %q (%q), want %q (%q)", res.Registrar, res.RegistrarIANAID, tt.wantRegistrar, tt.wantIANA)
+			}
+			if got := strings.Join(res.Nameservers, ","); got != tt.wantNS {
+				t.Errorf("nameservers = %q, want %q", got, tt.wantNS)
+			}
+			if day(res.Registered) != tt.wantReg || day(res.LastChanged) != tt.wantChanged {
+				t.Errorf("registered=%s last changed=%s, want %s %s", day(res.Registered), day(res.LastChanged), tt.wantReg, tt.wantChanged)
+			}
+		})
+	}
+}

@@ -11,6 +11,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -51,8 +52,16 @@ type Result struct {
 	URL        string     `json:"url,omitempty"`
 	Statuses   []string   `json:"statuses,omitempty"`
 	Expiry     *time.Time `json:"expiry,omitempty"`
-	Attempts   int        `json:"attempts"`
-	Err        string     `json:"error,omitempty"`
+
+	// Registration details, filled when State is Registered and the
+	// server provides them.
+	Registrar       string     `json:"registrar,omitempty"`         // name of the entity with role "registrar"
+	RegistrarIANAID string     `json:"registrar_iana_id,omitempty"` // its "IANA Registrar ID" public ID
+	Nameservers     []string   `json:"nameservers,omitempty"`       // lowercase, no trailing dot, sorted
+	Registered      *time.Time `json:"registered,omitempty"`        // "registration" event
+	LastChanged     *time.Time `json:"last_changed,omitempty"`      // "last changed" event
+	Attempts        int        `json:"attempts"`
+	Err             string     `json:"error,omitempty"`
 }
 
 // HasStatus reports whether the domain carries the given EPP-style status
@@ -246,6 +255,21 @@ type domainResponse struct {
 		Action string `json:"eventAction"`
 		Date   string `json:"eventDate"`
 	} `json:"events"`
+	Nameservers []struct {
+		LDHName string `json:"ldhName"`
+	} `json:"nameservers"`
+	Entities []entity `json:"entities"`
+}
+
+type entity struct {
+	Roles     []string        `json:"roles"`
+	VCard     json.RawMessage `json:"vcardArray"`
+	PublicIDs []struct {
+		Type       string `json:"type"`
+		Identifier string `json:"identifier"`
+	} `json:"publicIds"`
+	Handle   string   `json:"handle"`
+	Entities []entity `json:"entities"`
 }
 
 func parseDomain(body []byte, res *Result) error {
@@ -261,13 +285,85 @@ func parseDomain(body []byte, res *Result) error {
 		res.Statuses = append(res.Statuses, eppStatus(s))
 	}
 	for _, e := range d.Events {
-		if strings.EqualFold(e.Action, "expiration") {
-			if t, ok := parseTime(e.Date); ok {
-				res.Expiry = &t
+		t, ok := parseTime(e.Date)
+		if !ok {
+			continue
+		}
+		switch strings.ToLower(strings.TrimSpace(e.Action)) {
+		case "expiration":
+			res.Expiry = &t
+		case "registration":
+			res.Registered = &t
+		case "last changed":
+			res.LastChanged = &t
+		}
+	}
+	res.Nameservers = res.Nameservers[:0]
+	seen := map[string]bool{}
+	for _, ns := range d.Nameservers {
+		n := strings.ToLower(strings.TrimSuffix(strings.TrimSpace(ns.LDHName), "."))
+		if n != "" && !seen[n] {
+			seen[n] = true
+			res.Nameservers = append(res.Nameservers, n)
+		}
+	}
+	slices.Sort(res.Nameservers)
+	if r, ok := findRole(d.Entities, "registrar"); ok {
+		res.Registrar = vcardFN(r.VCard)
+		if res.Registrar == "" {
+			res.Registrar = r.Handle
+		}
+		for _, id := range r.PublicIDs {
+			if strings.EqualFold(id.Type, "IANA Registrar ID") {
+				res.RegistrarIANAID = strings.TrimSpace(id.Identifier)
 			}
 		}
 	}
 	return nil
+}
+
+// findRole returns the first entity with role, searching nested entities
+// breadth first.
+func findRole(es []entity, role string) (entity, bool) {
+	for len(es) > 0 {
+		var next []entity
+		for _, e := range es {
+			for _, r := range e.Roles {
+				if strings.EqualFold(r, role) {
+					return e, true
+				}
+			}
+			next = append(next, e.Entities...)
+		}
+		es = next
+	}
+	return entity{}, false
+}
+
+// vcardFN returns the "fn" (formatted name) of a jCard (RFC 7095):
+// ["vcard", [["version", {}, "text", "4.0"], ["fn", {}, "text", "Name"], ...]].
+func vcardFN(raw json.RawMessage) string {
+	var card []json.RawMessage
+	if len(raw) == 0 || json.Unmarshal(raw, &card) != nil || len(card) < 2 {
+		return ""
+	}
+	var props [][]json.RawMessage
+	if json.Unmarshal(card[1], &props) != nil {
+		return ""
+	}
+	for _, p := range props {
+		if len(p) < 4 {
+			continue
+		}
+		var name, value string
+		if json.Unmarshal(p[0], &name) != nil || !strings.EqualFold(name, "fn") {
+			continue
+		}
+		if json.Unmarshal(p[3], &value) == nil {
+			return strings.TrimSpace(value)
+		}
+	}
+	return ""
 }
 
 // eppStatus converts RDAP status values ("client hold") to the familiar
