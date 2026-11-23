@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/sbroekhoven/domping/internal/dnscheck"
-	"github.com/sbroekhoven/domping/internal/rdap"
+	"github.com/sbroekhoven/domping/rdap"
 )
 
 // Verdict is the overall classification of a domain.

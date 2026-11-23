@@ -19,8 +19,8 @@ import (
 	"github.com/sbroekhoven/domping/internal/dnscheck"
 	"github.com/sbroekhoven/domping/internal/input"
 	"github.com/sbroekhoven/domping/internal/output"
-	"github.com/sbroekhoven/domping/internal/rdap"
 	"github.com/sbroekhoven/domping/internal/verdict"
+	"github.com/sbroekhoven/domping/rdap"
 )
 
 // version is set at build time with -ldflags "-X main.version=...".

@@ -11,8 +11,8 @@ import (
 	"time"
 
 	"github.com/sbroekhoven/domping/internal/dnscheck"
-	"github.com/sbroekhoven/domping/internal/rdap"
 	"github.com/sbroekhoven/domping/internal/verdict"
+	"github.com/sbroekhoven/domping/rdap"
 )
 
 // Record is the full result for one domain.
