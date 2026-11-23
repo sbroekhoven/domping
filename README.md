@@ -152,6 +152,20 @@ domping -file dead.txt            # re-check later
 | 3 | Only unknown/inconsistent results, nothing definitively inactive |
 | 130 | Interrupted (Ctrl+C); results so far are printed |
 
+## Library use
+
+The RDAP client is importable as `github.com/sbroekhoven/domping/rdap`:
+
+```go
+c := rdap.New(rdap.Options{HostInterval: time.Second})
+res := c.Lookup(ctx, "example.com") // ASCII (punycode) name
+// res.State: registered, not-registered, no-rdap or unknown
+// res.Registrar, res.RegistrarIANAID, res.Nameservers, res.Statuses,
+// res.Registered, res.LastChanged, res.Expiry
+```
+
+With `-json` these registration fields also appear under `rdap`.
+
 ## Development
 
 ```sh
