@@ -6,6 +6,15 @@ the two.
 
 ## Install / build
 
+macOS and Linux, latest release into `/usr/local/bin`:
+
+```sh
+curl -fsSL "https://github.com/sbroekhoven/domping/releases/latest/download/domping_$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/').tar.gz" \
+  | sudo tar -xzf - -C /usr/local/bin domping
+```
+
+Other options:
+
 ```sh
 winget install SBroekhoven.domping                 # Windows
 go install github.com/sbroekhoven/domping@latest  # any platform with Go

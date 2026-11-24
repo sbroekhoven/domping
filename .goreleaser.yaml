@@ -19,6 +19,9 @@ builds:
 
 archives:
   - formats: [tar.gz]
+    # No version in the file name, so .../releases/latest/download/<name>
+    # always points at the newest build (used by the curl install in README).
+    name_template: "{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
     format_overrides:
       - goos: windows
         formats: [zip]
