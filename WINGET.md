@@ -16,7 +16,7 @@ On Windows, winget unpacks the release zip and puts `domping` on PATH.
 ## One-time setup
 
 1. Fork `microsoft/winget-pkgs` to `sbroekhoven/winget-pkgs`.
-2. Create a classic token at https://github.com/settings/tokens/new with only
+2. Create a classic token at <https://github.com/settings/tokens/new> with only
    the `public_repo` scope.
 3. Add the token to the **domping** repository (not the fork) as the Actions
    secret `WINGET_GITHUB_TOKEN` (Settings → Secrets and variables → Actions).
