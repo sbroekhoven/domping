@@ -1,0 +1,68 @@
+# yaml-language-server: $schema=https://goreleaser.com/static/schema.json
+version: 2
+
+project_name: domping
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - env:
+      - CGO_ENABLED=0
+    goos: [linux, darwin, windows]
+    goarch: [amd64, arm64]
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w -X main.version={{.Version}}
+
+archives:
+  - formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    files:
+      - README.md
+      - LICENSE
+      - config.yml
+
+checksum:
+  name_template: checksums.txt
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+
+winget:
+  - name: domping
+    publisher: Sebastian Broekhoven
+    package_identifier: SBroekhoven.domping
+    short_description: Check whether domain names are alive by combining RDAP and DNS.
+    description: |
+      domping checks whether domain names are actually alive by combining RDAP
+      (is it registered?) with DNS (does it resolve?) and cross-checking the two.
+    license: MIT
+    license_url: https://github.com/sbroekhoven/domping/blob/main/LICENSE
+    homepage: https://github.com/sbroekhoven/domping
+    publisher_url: https://github.com/sbroekhoven
+    release_notes_url: https://github.com/sbroekhoven/domping/releases/tag/{{ .Tag }}
+    tags: [dns, rdap, domain, cli]
+    commit_author:
+      name: goreleaserbot
+      email: bot@goreleaser.com
+    repository:
+      owner: sbroekhoven
+      name: winget-pkgs
+      branch: "domping-{{ .Version }}"
+      token: "{{ .Env.WINGET_GITHUB_TOKEN }}"
+      pull_request:
+        enabled: true
+        draft: false
+        base:
+          owner: microsoft
+          name: winget-pkgs
+          branch: master

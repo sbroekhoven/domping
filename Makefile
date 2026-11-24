@@ -4,7 +4,7 @@ LDFLAGS := -s -w -X main.version=$(VERSION)
 # Set RACE=1 to run tests with the race detector (requires cgo/a C compiler).
 TESTFLAGS := $(if $(RACE),-race,)
 
-.PHONY: all build test lint clean
+.PHONY: all build test lint clean snapshot
 
 all: lint test build
 
@@ -19,5 +19,8 @@ lint:
 	go vet ./...
 	@if command -v staticcheck >/dev/null 2>&1; then staticcheck ./...; else echo "staticcheck not installed, skipping"; fi
 
+snapshot:
+	goreleaser release --snapshot --clean
+
 clean:
-	rm -rf bin
+	rm -rf bin dist

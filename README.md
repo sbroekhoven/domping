@@ -7,9 +7,13 @@ the two.
 ## Install / build
 
 ```sh
-make build          # produces bin/domping
-go install github.com/sbroekhoven/domping@latest
+winget install SBroekhoven.domping                 # Windows
+go install github.com/sbroekhoven/domping@latest  # any platform with Go
+make build                                         # from source, produces bin/domping
 ```
+
+Prebuilt binaries for Linux, macOS and Windows (amd64/arm64) are attached to
+each [GitHub release](https://github.com/sbroekhoven/domping/releases).
 
 ## Usage
 
@@ -176,3 +180,17 @@ make build
 
 Tests need no network access: RDAP is mocked with `httptest` and DNS with an
 in-process `miekg/dns` server.
+
+### Releasing
+
+Pushing a `vX.Y.Z` tag runs [GoReleaser](https://goreleaser.com) via
+[.github/workflows/release.yml](.github/workflows/release.yml): it builds the
+binaries, publishes a GitHub release and opens a pull request with the new
+manifest on [microsoft/winget-pkgs](https://github.com/microsoft/winget-pkgs).
+`make snapshot` does a local dry run into `dist/` without publishing.
+
+The winget step needs some one-time setup; see [WINGET.md](WINGET.md).
+
+## License
+
+MIT, see [LICENSE](LICENSE).
