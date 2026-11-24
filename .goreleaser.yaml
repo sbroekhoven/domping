@@ -62,10 +62,8 @@ winget:
       name: winget-pkgs
       branch: "domping-{{ .Version }}"
       token: "{{ .Env.WINGET_GITHUB_TOKEN }}"
+      # The fine-grained token can only reach the fork, so GoReleaser pushes the
+      # branch there and the PR to microsoft/winget-pkgs is opened by hand
+      # (see WINGET.md).
       pull_request:
-        enabled: true
-        draft: false
-        base:
-          owner: microsoft
-          name: winget-pkgs
-          branch: master
+        enabled: false
